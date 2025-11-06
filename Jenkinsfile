@@ -1,8 +1,11 @@
+@Library('my-shared-lib') _ 
+
 pipeline {
-    agent any
+    agent { label 'agent1' }
     
     environment {
         IMAGE_NAME = "alia153/jenkins-ivolve"
+        
     }
     
     tools {
@@ -10,71 +13,57 @@ pipeline {
     }
     
     stages {
-        stage('Cloning the repo') {
+
+        stage('Clone Repository') {
             steps {
                 git url: 'https://github.com/Aliabdrabo/iVolve-DevOps.git', branch: 'main'
             }
         }
-        
-        stage('Run Unit Test') {
+
+        stage('Run Unit Tests') {
             steps {
                 dir('Jenkins_App') {
-                    sh 'mvn test'
+                    unitTests()
                 }
             }
         }
-        
-        stage('Build the app') {
+
+        stage('Build App') {
             steps {
-                 dir('Jenkins_App') {
-                    sh 'mvn package'
+                dir('Jenkins_App') {
+                    buildApp()
                 }
             }
         }
-        
-        stage('Build Docker image') {
+
+        stage('Build and Push Docker Image') {
             steps {
-                 dir('Jenkins_App') {
-                    sh "docker build -t ${IMAGE_NAME}:v${BUILD_NUMBER} ."
-                }
-            }
-        }
-        
-        stage('Push Docker image') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                dir('Jenkins_App') {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
-                    sh "docker push ${IMAGE_NAME}:v${BUILD_NUMBER}"
+                    buildAndPushImage("${IMAGE_NAME}", "${BUILD_NUMBER}")
                 }
             }
         }
-        
-        stage('Delete image locally') {
-            steps {
-                sh "docker rmi ${IMAGE_NAME}:v${BUILD_NUMBER}"
-            }
-        }
-        
+
         stage('Update Deployment') {
             steps {
                 dir('Jenkins_App') {
-                    sh 'sed -i "s|image:.*|image: alia153/jenkins-ivolve:v6|" deployment.yaml'
+                    sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:v${BUILD_NUMBER}|' deployment.yaml"
                 }
             }
         }
-        
+
         stage('Deploy to Kubernetes') {
             steps {
-                 dir('Jenkins_App') {
-                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh "kubectl apply -f deployment.yaml"
-                    }   
+                dir('Jenkins_App') {
+                    deployToK8s('deployment.yaml', "kubeconfig")
                 }
             }
         }
-    }  
-    
-    post {  
+    }
+
+    post {
         success {
             echo "✅ Pipeline succeeded!"
         }
@@ -86,3 +75,4 @@ pipeline {
         }
     }
 }
+
