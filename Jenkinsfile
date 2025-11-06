@@ -40,8 +40,9 @@ pipeline {
             steps {
                 dir('Jenkins_App') {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
-                    buildAndPushImage("${IMAGE_NAME}", "${BUILD_NUMBER}")
+                        sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                        buildAndPushImage("${IMAGE_NAME}", "${BUILD_NUMBER}")
+                    }    
                 }
             }
         }
