@@ -5,7 +5,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "alia153/jenkins-ivolve"
-        DEPLOYMENT_FILE = "deploymn.yaml"
+        DEPLOYMENT_FILE = "deployment.yaml"
     }
 
     tools {
